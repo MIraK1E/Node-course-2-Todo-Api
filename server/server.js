@@ -6,7 +6,7 @@ const { mongoose } = require('./db/mongoose');
 const { User } = require('./model/user');
 const { Todo } = require('./model/todo');
 
-const port = process.env.POST || 3000;
+const port = process.env.PORT || 3000;
 
 const app = express();
 
