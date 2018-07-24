@@ -8,6 +8,7 @@ const { ObjectID } = require('mongodb');
 const { mongoose } = require('./db/mongoose');
 const { User } = require('./model/user');
 const { Todo } = require('./model/todo');
+const { authenticate } = require('./middleware/authenticate');
 
 const port = process.env.PORT;
 
@@ -125,6 +126,41 @@ app.post('/users', (req, res) => {
         .catch((err) => {
             res.status(404).send(err);
         });
+});
+
+// const authenticate = (req, res, next) => {
+//     const token = req.header('x-auth');
+
+//     User.findByToken(token)
+//         .then((user) => {
+//             if(!user) {
+//                 return Promise.reject();
+//             } 
+            
+//             req.user = user;
+//             req.token = token;
+//             next();
+//         })
+//         .catch((err) => {
+//             res.status(401).send();
+//         })
+// }
+
+app.get('/users/me', authenticate, (req, res) => {
+    // code before authenticate middleware
+    // const token = req.header('x-auth');
+
+    // User.findByToken(token)
+    //     .then((user) => {
+    //         if(!user) {
+    //             return Promise.reject();
+    //         } 
+    //         res.send(user);
+    //     })
+    //     .catch((err) => {
+    //         res.status(401).send();
+    //     })
+    res.send(req.user);
 });
 
 app.listen(port, () => {
