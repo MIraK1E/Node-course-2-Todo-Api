@@ -4,27 +4,33 @@ const { ObjectID } = require('mongodb');
 
 const { app } = require('./../server');
 const { Todo } = require('./../model/todo');
+const { User } = require('./../model/user');
+const { todos, populateTodos, users, populateUser } = require('./seed/seed');
 
-const todos = [
-    { 
-        _id:  new ObjectID(),
-        text: 'First test todo',
-    }, 
-    { 
-        _id:  new ObjectID(),
-        text: 'Second text todo',
-        complete: true,
-        completeAt: 333
-    }
-];
+beforeEach(populateUser);
+beforeEach(populateTodos);
+
+// this code move to seed/seed.js
+// const todos = [
+//     { 
+//         _id:  new ObjectID(),
+//         text: 'First test todo',
+//     }, 
+//     { 
+//         _id:  new ObjectID(),
+//         text: 'Second text todo',
+//         complete: true,
+//         completeAt: 333
+//     }
+// ];
 
 // this function will run before test case
 // it will run test case when call done
-beforeEach((done) => {
-    Todo.remove({}).then(() => {
-        Todo.insertMany(todos);
-    }).then(() => done());
-})
+// beforeEach((done) => {
+//     Todo.remove({}).then(() => {
+//         Todo.insertMany(todos);
+//     }).then(() => done());
+// })
 
 describe('POST/todos', () => {
 
@@ -169,7 +175,7 @@ describe('PATCH /todos/:id', () => {
             .end(done);
     });
 
-    it('should clear completeAt when todo is not complete', () => {
+    it('should clear completeAt when todo is not complete', (done) => {
         const id = todos[1]._id.toHexString();
 
         const todo = { text: 'update test2', complete: false }
@@ -182,6 +188,82 @@ describe('PATCH /todos/:id', () => {
                 expect(res.body.todo.text).toBe(todo.text);
                 expect(res.body.todo.complete).toBe(false);
                 expect(res.body.todo.completeAt).toNotExist();
+            })
+            .end(done);
+    });
+});
+
+describe('GET /users/me', () => {
+    it('should return user if authenticated', (done) => {
+        request(app)
+            .get('/users/me')
+            .set('x-auth', users[0].tokens[0].token)
+            .expect(200)
+            .expect((res) => {
+                expect(res.body._id).toBe(users[0]._id.toHexString());
+                expect(res.body.email).toBe(users[0].email)
+            })
+            .end(done);
+    });
+
+    it('should return 401 if not authenticate', (done) => {
+        request(app)
+            .get('/users/me')
+            .expect(401)
+            .expect((res) => {
+                expect(res.body).toEqual({})
+            })
+            .end(done)
+    });
+});
+
+describe('POST /users', () => {
+    it('should create a user', (done) => {
+        const email = 'notduplicateexample@example.com';
+        const password = '1234567';
+
+        request(app)
+            .post('/users')
+            .send({ email, password })
+            .expect(200)
+            .expect((res) => {
+                expect(res.headers['x-auth']).toExist();
+                expect(res.body._id).toExist();
+                expect(res.body.email).toBe(email);
+            })
+            .end((err) => {
+                if(err)
+                {
+                    return done(err);
+                }
+
+                User.findOne({ email }).then((user) => {
+                    expect(user).toExist();
+                    expect(user.password).toNotBe(password);
+                    done();
+                });
             });
+    });
+
+    it('should return validation error if request invalid', (done) => {
+        const email = '123abc';
+        const password = '123';
+
+        request(app)
+            .post('/users')
+            .send({ email, password })
+            .expect(404)
+            .end(done);
+    });
+
+    it('should not create user if email in use', (done) => {
+        const email = users[0].email;
+        const password = 'asd1234';
+
+        request(app)
+            .post('/users')
+            .send({ email, password })
+            .expect(404)
+            .end(done);
     });
 });
