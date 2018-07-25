@@ -128,6 +128,7 @@ app.post('/users', (req, res) => {
         });
 });
 
+// move to middleware authenticate
 // const authenticate = (req, res, next) => {
 //     const token = req.header('x-auth');
 
@@ -161,6 +162,18 @@ app.get('/users/me', authenticate, (req, res) => {
     //         res.status(401).send();
     //     })
     res.send(req.user);
+});
+
+app.post('/users/login', (req, res) => {
+    const user = _.pick(req.body, ['email', 'password']);
+    
+    User.findByCredentials(user.email, user.password).then((user) => {
+        return user.generateAuthToken().then((token) => {
+            res.header('x-auth', token).send(user)
+        });
+    }).catch((err) => {
+        res.status(404).send(err);
+    })
 });
 
 app.listen(port, () => {
